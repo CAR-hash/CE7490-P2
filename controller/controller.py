@@ -1,10 +1,11 @@
 import math
 
-from drive.disk import SimpleDisk
+from drive.disk import SimpleDisk, RemoteDiskFactory, SimpleDiskFactory
 import os
 import json
 from util.config_util import ConfigObject
 import numpy as np
+
 
 class DataObject(object):
     def __init__(self, name, disk_idx, chunk_idx, length):
@@ -13,6 +14,11 @@ class DataObject(object):
         self.chunk_idx = chunk_idx
         self.length = length
 
+
+class MutableDataObject(object):
+    def __init__(self, name):
+        self.name = name
+        self.chunk_dict = {}
 
 class BaseController(object):
     def __init__(self, config):
@@ -120,6 +126,11 @@ class SimpleController(BaseController):
         self.a_dict = {}
         self.b_dict = {}
 
+        if config.remote:
+            self.factory = RemoteDiskFactory(config)
+        else:
+            self.factory = SimpleDiskFactory(config)
+
     def create_new_raid(self):
         assert self.config.disk_size % self.config.r == 0
 
@@ -134,7 +145,7 @@ class SimpleController(BaseController):
             "chunk_per_disk": self.config.disk_size / self.config.r,
         }
         for i in range(0, self.stripe_count + self.parity_count):
-            disk = SimpleDisk(disk_id=i, disk_meta=disk_meta)
+            disk = self.factory.new_disk(i, disk_meta)
             disk.allocate()
             self.disks.append(disk)
 
@@ -151,7 +162,7 @@ class SimpleController(BaseController):
 
         assert self.config.parity_count < 5
         self.generators = [2**i for i in range(0, self.config.parity_count)]
-        self.init_multiply_table()
+        # self.init_multiply_table()
 
         self.init_parity()
 
@@ -164,7 +175,7 @@ class SimpleController(BaseController):
             "chunk_per_disk": self.config.disk_size / self.config.r,
         }
         for i in range(0, self.stripe_count + self.parity_count):
-            disk = SimpleDisk(disk_id=i, disk_meta=disk_meta)
+            disk = self.factory.new_disk(i, disk_meta)
             disk.activate()
             self.disks.append(disk)
 
@@ -501,3 +512,115 @@ class SimpleController(BaseController):
         original_chunk = self.disks[test_chunk_idx].read_chunk(group_idx)
         return output_chunk, original_chunk
 
+
+class MutableController(SimpleController):
+    def __init__(self, config):
+        super().__init__(config)
+
+    def activate_raid(self):
+        disk_meta = {
+            "raid_path": self.config.name,
+            "file_size": self.config.file_size,
+            "chunk_size": self.config.r,
+            "disk_size": self.config.disk_size,
+            "chunk_per_disk": self.config.disk_size / self.config.r,
+        }
+        for i in range(0, self.stripe_count + self.parity_count):
+            disk = self.factory.new_disk(i, disk_meta)
+            disk.activate()
+            self.disks.append(disk)
+
+        with open("%s\\objects.json" % self.config.name, "r") as f:
+            temp_dict = json.loads(f.read())
+            for key in temp_dict:
+                temp_obj = temp_dict[key]
+                mutable_obj = MutableDataObject(name=temp_obj['name'])
+                for key in temp_obj["chunk_dict"].keys():
+                    idx = [int(i) for i in key.split(",")]
+                    mutable_obj.chunk_dict[(idx[0], idx[1])] = temp_obj["chunk_dict"][key]
+                self.data_objs[temp_obj['name']] = mutable_obj
+
+        self.generators = [2**i for i in range(0, self.config.parity_count)]
+        self.load_multiply_table()
+
+        self.activate_parity()
+
+    def save(self):
+        for disk in self.disks:
+            disk.save()
+
+        with open("%s\\objects.json" % self.config.name, "w") as f:
+            temp_dict = {}
+            for key in self.data_objs.keys():
+                save_obj = {"name": self.data_objs[key].name}
+                save_dict = {}
+                for chunk_key in self.data_objs[key].chunk_dict.keys():
+                    save_key = "%d,%d" % (chunk_key[0], chunk_key[1])
+                    save_dict[save_key] = self.data_objs[key].chunk_dict[chunk_key]
+                save_obj["chunk_dict"] = save_dict
+                temp_dict[key] = save_obj
+
+            f.write(json.dumps(temp_dict))
+
+    def create_obj(self, name):
+        if name in self.data_objs.keys():
+            raise Exception("Object %s exists." % name)
+        self.data_objs[name] = MutableDataObject(name=name)
+
+    def write_obj(self, name, value: bytes):
+        if name not in self.data_objs.keys():
+            raise Exception("Object %s does not exist." % name)
+
+        self.data_objs[name].chunk_dict.clear()
+
+        # split value
+        chunks_count = math.ceil(len(value) / self.config.r)
+        data_slices = []
+        for i in range(0, chunks_count):
+            data_slices.append(value[i*self.config.r
+                               :min((i+1)*self.config.r, len(value))])
+        groups_to_update = []
+
+        for data_slice in data_slices:
+            created = False
+            for disk in self.disks:
+                if len(disk.available_chunks) > 0:
+                    chunk_idx = disk.available_chunks[0]
+                    disk_idx = disk.disk_id
+                    chunk_idx = chunk_idx
+                    disk.write_chunk(chunk_idx, data_slice)
+                    disk.set_status(chunk_idx, True)
+                    created = True
+                    self.data_objs[name].chunk_dict[(disk.disk_id, chunk_idx)] = len(data_slice)
+                    groups_to_update.append((disk_idx, chunk_idx))
+                    break
+            if not created:
+                raise Exception("No space to write object.")
+
+            self.update_parity(groups_to_update)
+
+    def read_obj(self, name):
+        if name not in self.data_objs.keys():
+            raise Exception("Object %s does not exist." % name)
+        obj = self.data_objs[name]
+
+        data_slices = []
+        for key in obj.chunk_dict.keys():
+            disk_idx = key[0]
+            chunk_idx = key[1]
+            data_slices.append(self.disks[disk_idx].read_chunk(chunk_idx)[:obj.chunk_dict[key]])
+
+        return b''.join(data_slices)
+
+    def delete_obj(self, name):
+        if name not in self.data_objs.keys():
+            raise Exception("Object %s does not exist." % name)
+
+        obj = self.data_objs[name]
+
+        for key in obj.chunk_dict.keys():
+            disk_idx = key[0]
+            chunk_idx = key[1]
+            self.disks[disk_idx].set_status(chunk_idx, False)
+
+        self.data_objs.pop(name)

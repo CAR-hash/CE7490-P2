@@ -139,3 +139,33 @@ class SimpleDisk(object):
         for key in self.chunk_status.keys():
             self.chunk_status[key] = False
         print("Disk %d is reset." % self.disk_id)
+
+
+class RemoteDisk(object):
+    def __init__(self):
+        pass
+
+
+# Create disks with this class
+class DiskFactory(object):
+    def __init__(self, config):
+        pass
+
+    def new_disk(self, disk_id: int, disk_meta = None):
+        pass
+
+
+class SimpleDiskFactory(DiskFactory):
+    def __init__(self, config):
+        super().__init__(config)
+
+    def new_disk(self, disk_id: int, disk_meta=None):
+        return SimpleDisk(disk_id, disk_meta)
+
+
+class RemoteDiskFactory(DiskFactory):
+    def __init__(self, config):
+        super().__init__(config)
+
+    def new_disk(self, disk_id: int, disk_meta=None):
+        return SimpleDisk(disk_id, disk_meta)

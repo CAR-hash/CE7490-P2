@@ -2,7 +2,7 @@ import argparse
 import copy
 import json
 import os
-from controller.controller import SimpleController
+from controller.controller import SimpleController, MutableController
 from util.config_util import ConfigObject
 
 parser = argparse.ArgumentParser(prog="Distributed Raid-6", description="Raid commands")
@@ -21,9 +21,14 @@ if opts.init is not None:
     config = opts.init[0]
     with open(config, 'r') as f:
         config = ConfigObject(f.read())
-        controller = SimpleController(config)
-        controller.create_new_raid()
-        controller.save()
+        if config.mutable:
+            controller = MutableController(config)
+            controller.create_new_raid()
+            controller.save()
+        else:
+            controller = SimpleController(config)
+            controller.create_new_raid()
+            controller.save()
 
 if opts.activate is not None:
     assert opt_count == 0
@@ -34,8 +39,12 @@ if opts.activate is not None:
 
     with open("%s/meta.json" % sys_name, 'r') as f:
         config = ConfigObject(f.read())
-        controller = SimpleController(config)
-        controller.activate_raid()
+        if config.mutable:
+            controller = MutableController(config)
+            controller.activate_raid()
+        else:
+            controller = SimpleController(config)
+            controller.activate_raid()
 
         while True:
             cmd = input(">")
@@ -65,6 +74,7 @@ if opts.activate is not None:
             #try:
             opts = parser.parse_args(cmd)
             if opts.read is not None:
+                print(type(controller))
                 value = controller.read_obj(opts.read[0])
                 print(value)
             elif opts.write is not None:
@@ -72,7 +82,7 @@ if opts.activate is not None:
                     raise Exception("Please specify the data to write.")
                 elif opts.content is not None:
                     data = opts.content[0]
-                    if len(data) > config.r:
+                    if len(data) > config.r and not config.mutable:
                         raise Exception("Minimal implementation does not support objects larger than 1 chunk.")
                     for i in range(len(data), config.r):
                         data = data + "0"
