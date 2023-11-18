@@ -5,3 +5,6 @@ drive/__pycache__/
 minimal/4/content_0
 minimal/
 util/__pycache__/
+huge/
+test/__pycache__/
+controller/__pycache__/

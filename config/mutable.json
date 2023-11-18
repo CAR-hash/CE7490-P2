@@ -1,0 +1,10 @@
+{
+  "name":"mutable",
+  "disk_size": 1024,
+  "file_size": 512,
+  "stripe_count": 6,
+  "parity_count": 2,
+  "r": 128,
+  "mutable": true,
+  "remote": false
+}

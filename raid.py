@@ -54,6 +54,12 @@ if opts.activate is not None:
             parser.add_argument("-d", "--delete", nargs=1, help="delete an object")
             parser.add_argument("-a", '--all', action='store_true', help="delete all objects")
 
+            parser.add_argument("--check", action='store_true', help="check if any disk is corrupted")
+
+            parser.add_argument("--repair", nargs='+', help="repair the broken disks")
+
+            parser.add_argument("--reset", action='store_true', help="reset the disks")
+
             parser.add_argument("--save", action='store_true')
             parser.add_argument("--quit", action='store_true')
             #try:
@@ -91,6 +97,13 @@ if opts.activate is not None:
                 else:
                     controller.delete_obj(opts.delete[0])
                     controller.save()
+            elif opts.check:
+                print(controller.check_failure())
+            elif opts.repair is not None:
+                broken_disks = [int(i) for i in opts.repair]
+                controller.repair(broken_disks)
+            elif opts.reset:
+                controller.reset()
             elif opts.save:
                 controller.save()
             elif opts.quit:

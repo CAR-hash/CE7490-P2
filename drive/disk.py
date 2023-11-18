@@ -130,3 +130,12 @@ class SimpleDisk(object):
 
     def set_status(self, chunk_idx, status):
         self.chunk_status[chunk_idx] = status
+
+    def reset(self):
+        reset_data = str(bytes(self.file_size), encoding='utf-8')
+        for file_idx in range(0, self.file_count):
+            with open(self.file_path + "_%d.txt" % file_idx, "w") as f:
+                f.write(reset_data)
+        for key in self.chunk_status.keys():
+            self.chunk_status[key] = False
+        print("Disk %d is reset." % self.disk_id)
