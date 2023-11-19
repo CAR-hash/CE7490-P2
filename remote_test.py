@@ -63,10 +63,7 @@ class TestRemoteDisk(unittest.TestCase):
             print(f"Test {i}: break disk {break_disk[0]}")
             # corrupt disks
             for disk_idx in break_disk:
-                for file_idx in range(0, content_count):
-                    with open("minimal/%d/content_%d.txt" % (disk_idx, file_idx), 'w') as f:
-                        data = str(bytes(config.file_size), encoding='utf-8')
-                        f.write(data)
+                controller.disks[disk_idx].reset()
             # repair
             self.assertTrue(controller.check_failure())
             controller.repair(break_disk)
