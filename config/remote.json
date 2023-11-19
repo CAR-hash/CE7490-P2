@@ -5,6 +5,11 @@
   "stripe_count": 6,
   "parity_count": 2,
   "r": 128,
-  "mutable": false,
-  "remote": false
+  "mutable": true,
+  "remote": true,
+  "local": "12.21..",
+  "peers": [
+      "127.0.01",
+      "12..23.."
+  ]
 }
