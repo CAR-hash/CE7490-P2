@@ -1,8 +1,9 @@
 import math
-
-from drive.disk import SimpleDisk, RemoteDiskFactory, SimpleDiskFactory
 import os
 import json
+
+from drive.disk import SimpleDisk, RemoteDiskFactory, SimpleDiskFactory
+
 from util.config_util import ConfigObject
 import numpy as np
 
@@ -151,11 +152,11 @@ class SimpleController(BaseController):
             self.disks.append(disk)
 
         # save meta
-        with open("%s\\meta.json" % self.config.name, "w") as f:
+        with open("%s/meta.json" % self.config.name, "w") as f:
             f.write(json.dumps(self.config.dic))
 
         # object data
-        with open("%s\\objects.json" % self.config.name, "w") as f:
+        with open("%s/objects.json" % self.config.name, "w") as f:
             temp_dict = {}
             for key in self.data_objs.keys():
                 temp_dict[key] = self.data_objs[key].__dict__
@@ -181,7 +182,7 @@ class SimpleController(BaseController):
             disk.activate()
             self.disks.append(disk)
 
-        with open("%s\\objects.json" % self.config.name, "r") as f:
+        with open("%s/objects.json" % self.config.name, "r") as f:
             temp_dict = json.loads(f.read())
             for key in temp_dict:
                 temp_obj = temp_dict[key]
@@ -252,7 +253,7 @@ class SimpleController(BaseController):
         for disk in self.disks:
             disk.save()
 
-        with open("%s\\objects.json" % self.config.name, "w") as f:
+        with open("%s/objects.json" % self.config.name, "w") as f:
             temp_dict = {}
             for key in self.data_objs.keys():
                 temp_dict[key] = self.data_objs[key].__dict__
@@ -295,7 +296,7 @@ class SimpleController(BaseController):
                 self.q_parameters[i][data_stripes[p]] = p
 
     def init_multiply_table(self):
-        if os.path.exists("%s\\mul_table_a.json" % self.config.name) and os.path.exists("%s\\mul_table_b.json" % self.config.name):
+        if os.path.exists("%s/mul_table_a.json" % self.config.name) and os.path.exists("%s/mul_table_b.json" % self.config.name):
             return
         for x in range(0, 255):
             for y in range(0, 255):
@@ -304,30 +305,30 @@ class SimpleController(BaseController):
                 p = (y - x + 255) % 256
                 g_power_y_m_x = byte_power(self.generators[1], p)
                 # compute a
-                self.a_dict["%d,%d" % (x, y)] = int.from_bytes(byte_multiple(g_power_y_m_x, byte_power((int.from_bytes(g_power_y_m_x, byteorder="little") + 1) % 256, 254)))
+                self.a_dict["%d,%d" % (x, y)] = int.from_bytes(byte_multiple(g_power_y_m_x, byte_power((int.from_bytes(g_power_y_m_x, byteorder="little") + 1) % 256, 254)), byteorder="little")
                 # compute b
-                self.b_dict["%d,%d" % (x, y)] = int.from_bytes(byte_multiple(byte_power(self.generators[1], 255 - x), byte_power((int.from_bytes(g_power_y_m_x, byteorder="little") + 1) % 256, 254)))
+                self.b_dict["%d,%d" % (x, y)] = int.from_bytes(byte_multiple(byte_power(self.generators[1], 255 - x), byte_power((int.from_bytes(g_power_y_m_x, byteorder="little") + 1) % 256, 254)), byteorder="little")
 
                 print("%d,%d" % (x, y))
-        with open("%s\\mul_table_a.json" % self.config.name, "w") as f:
+        with open("%s/mul_table_a.json" % self.config.name, "w") as f:
             f.write(json.dumps(self.a_dict))
 
-        with open("%s\\mul_table_b.json" % self.config.name, "w") as f:
+        with open("%s/mul_table_b.json" % self.config.name, "w") as f:
             f.write(json.dumps(self.b_dict))
 
     def load_multiply_table(self):
-        if not (os.path.exists("%s\\mul_table_a.json" % self.config.name) and os.path.exists("%s\\mul_table_b.json" % self.config.name)):
+        if not (os.path.exists("%s/mul_table_a.json" % self.config.name) and os.path.exists("%s/mul_table_b.json" % self.config.name)):
             self.init_multiply_table()
             self.a_dict.clear()
             self.b_dict.clear()
 
-        with open("%s\\mul_table_a.json" % self.config.name) as f:
+        with open("%s/mul_table_a.json" % self.config.name) as f:
             temp_dict = json.loads(f.read())
             for key in temp_dict.keys():
                 tuple_key = (int(key.split(",")[0]), int(key.split(",")[1]))
                 self.a_dict[tuple_key] = temp_dict[key]
 
-        with open("%s\\mul_table_b.json" % self.config.name) as f:
+        with open("%s/mul_table_b.json" % self.config.name) as f:
             temp_dict = json.loads(f.read())
             for key in temp_dict.keys():
                 tuple_key = (int(key.split(",")[0]), int(key.split(",")[1]))
@@ -540,7 +541,7 @@ class MutableController(SimpleController):
             disk.activate()
             self.disks.append(disk)
 
-        with open("%s\\objects.json" % self.config.name, "r") as f:
+        with open("%s/objects.json" % self.config.name, "r") as f:
             temp_dict = json.loads(f.read())
             for key in temp_dict:
                 temp_obj = temp_dict[key]
@@ -559,7 +560,7 @@ class MutableController(SimpleController):
         for disk in self.disks:
             disk.save()
 
-        with open("%s\\objects.json" % self.config.name, "w") as f:
+        with open("%s/objects.json" % self.config.name, "w") as f:
             temp_dict = {}
             for key in self.data_objs.keys():
                 save_obj = {"name": self.data_objs[key].name}

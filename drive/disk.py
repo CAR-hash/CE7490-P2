@@ -5,8 +5,10 @@ import json
 
 import requests
 
-from peer_gate import PeerGate
-
+if os.path.exists("drive"):
+    from drive.peer_gate import PeerGate
+else:
+    from peer_gate import PeerGate
 
 # local disk
 # A disk is consist fo a certain number of chunks
@@ -38,7 +40,7 @@ class SimpleDisk(object):
             self.disk_id = disk_id
 
     def allocate(self):
-        disk_path = self.meta["raid_path"] + "\\%d" % self.disk_id
+        disk_path = self.meta["raid_path"] + "/%d" % self.disk_id
         if os.path.exists(disk_path):
             raise Exception("Disk initialization failed since location %s has been occupied." % disk_path)
         else:
@@ -52,7 +54,7 @@ class SimpleDisk(object):
                 self.meta["chunk_%d" % i] = False
                 self.chunk_status[i] = False
 
-            file_path = disk_path + "\\content"
+            file_path = disk_path + "/content"
             self.file_path = file_path
             self.meta["file_path"] = file_path
 
@@ -63,7 +65,7 @@ class SimpleDisk(object):
                     f.write(init_data)
 
             # create meta
-            meta_path = disk_path + "\\meta.json"
+            meta_path = disk_path + "/meta.json"
             with open(meta_path, "w+") as f:
                 f.write(json.dumps(self.meta))
 
@@ -71,18 +73,18 @@ class SimpleDisk(object):
 
     # read meta
     def activate(self):
-        disk_path = self.meta["raid_path"] + "\\%d" % self.disk_id
+        disk_path = self.meta["raid_path"] + "/%d" % self.disk_id
         if not os.path.exists(disk_path):
             raise Exception("Disk activation failed since no disk is located at %s." % disk_path)
         else:
-            with open("%s\\meta.json" % disk_path) as f:
+            with open("%s/meta.json" % disk_path) as f:
                 self.meta = json.loads(f.read())
                 assert self.disk_id == self.meta["disk_id"]
 
                 # update meta
                 self.path = disk_path
 
-                file_path = disk_path + "\\content"
+                file_path = disk_path + "/content"
                 self.file_path = file_path
 
                 for i in range(0, self.chunk_per_disk):
@@ -96,7 +98,7 @@ class SimpleDisk(object):
             self.meta["chunk_%d" % i] = self.chunk_status[i]
 
         # write meta
-        with open("%s\\meta.json" % self.path, "w") as f:
+        with open("%s/meta.json" % self.path, "w") as f:
             f.write(json.dumps(self.meta))
 
     @property
@@ -160,9 +162,55 @@ class RemoteDisk(SimpleDisk):
 
     def activate(self):
         if self.local:
-            super().allocate()
+            super().activate()
         else:
             self.gate.remote_activate(self.disk_id)
+
+    def save(self):
+        if self.local:
+            super().save()
+        else:
+            self.gate.remote_save(self.disk_id)
+
+    def write_chunk(self, chunk_idx, chunk):
+        # locate chunk
+        if self.local:
+            super().write_chunk(chunk_idx, chunk)
+        else:
+            self.gate.remote_write(self.disk_id, chunk_idx, chunk)
+
+    def read_chunk(self, chunk_idx):
+        # locate chunk
+        if self.local:
+            return super().read_chunk(chunk_idx)
+        else:
+            return self.gate.remote_read(self.disk_id, chunk_idx)
+
+    # label a chunk as parity chunk, thus it cannot be used for store stripes
+    def set_parity(self, chunk_idx):
+        if self.local:
+            super().set_parity(chunk_idx)
+        else:
+            self.gate.remote_set_parity(self.disk_id, chunk_idx)
+
+    def set_status(self, chunk_idx, status):
+        if self.local:
+            super().set_status(chunk_idx, status)
+        else:
+            self.gate.remote_set_status(self.disk_id, chunk_idx, status)
+
+    def reset(self):
+        if self.local:
+            super().reset()
+        else:
+            self.gate.remote_reset(self.disk_id)
+
+    @property
+    def available_chunks(self):
+        if self.local:
+            return super().available_chunks
+        else:
+            return self.gate.remote_data_available_chunks(self.disk_id)
 
 
 # Create disks with this class
@@ -232,7 +280,6 @@ class RemoteDiskFactory(DiskFactory):
         # pass config to local and remote responders
 
         # local
-        local_url = "http://localhost:5000/config"
         local_config = {
             "local_disks": self.local_disks,
             "disk_meta": {
@@ -243,7 +290,6 @@ class RemoteDiskFactory(DiskFactory):
                 "chunk_per_disk": self.config.disk_size / self.config.r,
             }
         }
-        requests.post(local_url, json.dumps(local_config))
         # remote
         for peer in self.peers:
             peer_config = copy.deepcopy(local_config)
@@ -268,7 +314,7 @@ class RemoteDiskFactory(DiskFactory):
 
     def new_disk(self, disk_id: int, disk_meta=None):
         if disk_id in self.local_disks:
-            disk = RemoteDisk(True, self.gates[self.disk_host[disk_id]], disk_id, disk_meta)
+            disk = RemoteDisk(True, None, disk_id, disk_meta)
         else:
             disk = RemoteDisk(False, self.gates[self.disk_host[disk_id]], disk_id, disk_meta)
         return disk
