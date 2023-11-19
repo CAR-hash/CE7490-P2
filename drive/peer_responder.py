@@ -53,6 +53,7 @@ def allocate_sys():
 @app.route("/allocate/<disk_idx>", methods=['POST'])
 def allocate(disk_idx):
     global disk_list
+    os.chdir("..")
     disk_list[disk_idx].allocate()
     disk_list[disk_idx].save()
 
@@ -60,6 +61,7 @@ def allocate(disk_idx):
 @app.route("/activate/<disk_idx>", methods=['POST'])
 def activate(disk_idx):
     global disk_list
+    os.chdir("..")
     disk_list[disk_idx].activate()
     disk_list[disk_idx].save()
 
@@ -68,6 +70,7 @@ def activate(disk_idx):
 # respond for a peer
 def respond_read(disk_id, chunk_id):
     global disk_list
+    os.chdir("..")
     disk = disk_list[disk_id]
     return disk.read_chunk(chunk_id)
 
@@ -75,6 +78,7 @@ def respond_read(disk_id, chunk_id):
 @app.route("/write/<disk_id>/<chunk_id>", methods=['POST'])
 def respond_write(disk_id, chunk_id):
     global disk_list
+    os.chdir("..")
     disk = disk_list[disk_id]
     disk.write_chunk(chunk_id, request.get_data())
     disk.save()
@@ -82,6 +86,7 @@ def respond_write(disk_id, chunk_id):
 @app.route("/set-parity/<disk_id>/<chunk_id>", methods=['POST'])
 def respond_set_parity(disk_id, chunk_id):
     global disk_list
+    os.chdir("..")
     disk = disk_list[disk_id]
     disk.set_parity(chunk_id)
     disk.save()
@@ -90,6 +95,7 @@ def respond_set_parity(disk_id, chunk_id):
 @app.route("/set-status/<disk_id>/<chunk_id>/<status>", methods=['POST'])
 def respond_set_status(disk_id, chunk_id, status):
     global disk_list
+    os.chdir("..")
     disk = disk_list[disk_id]
     sta = False
     if status > 0:
@@ -101,6 +107,7 @@ def respond_set_status(disk_id, chunk_id, status):
 @app.route("/reset/<disk_id>", methods=['POST'])
 def respond_reset(disk_id):
     global disk_list
+    os.chdir("..")
     disk = disk_list[disk_id]
     disk.reset()
     disk.save()

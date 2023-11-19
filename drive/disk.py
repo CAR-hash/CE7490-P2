@@ -234,15 +234,25 @@ class RemoteDiskFactory(DiskFactory):
         # local
         local_url = "http://localhost:5000/config"
         local_config = {
-
+            "local_disks": self.local_disks,
+            "disk_meta": {
+                "raid_path": self.config.name,
+                "file_size": self.config.file_size,
+                "chunk_size": self.config.r,
+                "disk_size": self.config.disk_size,
+                "chunk_per_disk": self.config.disk_size / self.config.r,
+            }
         }
         requests.post(local_url, json.dumps(local_config))
         # remote
         for peer in self.peers:
             peer_config = copy.deepcopy(local_config)
-            peer_config["local_disks"] = [
-
-            ]
+            peer_part_idx = 0
+            for i in range(0, hosts_count):
+                if all_hosts[i] == peer:
+                    peer_part_idx = i
+                    break
+            peer_config["local_disks"] = slices[peer_part_idx]
             requests.post("http://%s:5000/config" % peer, json.dumps(peer_config))
 
     def allocate(self):
@@ -250,7 +260,7 @@ class RemoteDiskFactory(DiskFactory):
         for peer in self.peers:
             peer_config = copy.deepcopy(sys_config)
             peer_config["local"] = peer
-            peer_config["peers"] = list((set(sys_config["peers"]) - {peer})  | {self.local})
+            peer_config["peers"] = list((set(sys_config["peers"]) - {peer}) | {self.local})
             requests.post("http://%s:5000/sys/allocate" % peer, json.dumps(peer_config))
 
     def activate(self):
