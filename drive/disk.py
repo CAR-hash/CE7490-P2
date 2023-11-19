@@ -1,6 +1,11 @@
 import copy
+import math
 import os
 import json
+
+import requests
+
+from peer_gate import PeerGate
 
 
 # local disk
@@ -141,14 +146,35 @@ class SimpleDisk(object):
         print("Disk %d is reset." % self.disk_id)
 
 
-class RemoteDisk(object):
-    def __init__(self):
-        pass
+class RemoteDisk(SimpleDisk):
+    def __init__(self, local, gate, disk_id: int, disk_meta):
+        super().__init__(disk_id, disk_meta)
+        self.local = local
+        self.gate: PeerGate = gate
+
+    def allocate(self):
+        if self.local:
+            super().allocate()
+        else:
+            self.gate.remote_allocate(self.disk_id)
+
+    def activate(self):
+        if self.local:
+            super().allocate()
+        else:
+            self.gate.remote_activate(self.disk_id)
 
 
 # Create disks with this class
 class DiskFactory(object):
     def __init__(self, config):
+        self.config = config
+        pass
+
+    def allocate(self):
+        pass
+
+    def activate(self):
         pass
 
     def new_disk(self, disk_id: int, disk_meta = None):
@@ -159,6 +185,12 @@ class SimpleDiskFactory(DiskFactory):
     def __init__(self, config):
         super().__init__(config)
 
+    def allocate(self):
+        pass
+
+    def activate(self):
+        pass
+
     def new_disk(self, disk_id: int, disk_meta=None):
         return SimpleDisk(disk_id, disk_meta)
 
@@ -166,6 +198,67 @@ class SimpleDiskFactory(DiskFactory):
 class RemoteDiskFactory(DiskFactory):
     def __init__(self, config):
         super().__init__(config)
+        self.peers = config.peers
+        self.local = config.local
+        # decide which part of disks to hold
+        hosts_count = len(self.peers) + 1
+        disks_to_distribute = list(range(0, config.stripe_count + config.parity_count))
+        slice_len = math.ceil(len(disks_to_distribute)/hosts_count)
+        slices = []
+        for i in range(0, hosts_count):
+            slices.append(disks_to_distribute[i*slice_len:min((i+1)*slice_len, len(disks_to_distribute))])
+
+        all_hosts = self.peers + [self.local]
+        all_hosts.sort()
+        local_part_idx = 0
+        for i in range(0, hosts_count):
+            if all_hosts[i] == self.local:
+                local_part_idx = i
+                break
+
+        self.local_disks = slices[local_part_idx]
+
+        self.disk_host = []
+        slice_idx = 0
+        for disk_slice in slices:
+            for disk in disk_slice:
+                self.disk_host.append(all_hosts[slice_idx])
+            slice_idx = slice_idx + 1
+        # prepare gates
+        self.gates = {}
+        for peer in self.peers:
+            self.gates[peer] = PeerGate(peer)
+
+        # pass config to local and remote responders
+
+        # local
+        local_url = "http://localhost:5000/config"
+        local_config = {
+
+        }
+        requests.post(local_url, json.dumps(local_config))
+        # remote
+        for peer in self.peers:
+            peer_config = copy.deepcopy(local_config)
+            peer_config["local_disks"] = [
+
+            ]
+            requests.post("http://%s:5000/config" % peer, json.dumps(peer_config))
+
+    def allocate(self):
+        sys_config = self.config.dic
+        for peer in self.peers:
+            peer_config = copy.deepcopy(sys_config)
+            peer_config["local"] = peer
+            peer_config["peers"] = list((set(sys_config["peers"]) - {peer})  | {self.local})
+            requests.post("http://%s:5000/sys/allocate" % peer, json.dumps(peer_config))
+
+    def activate(self):
+        pass
 
     def new_disk(self, disk_id: int, disk_meta=None):
-        return SimpleDisk(disk_id, disk_meta)
+        if disk_id in self.local_disks:
+            disk = RemoteDisk(True, self.gates[self.disk_host[disk_id]], disk_id, disk_meta)
+        else:
+            disk = RemoteDisk(False, self.gates[self.disk_host[disk_id]], disk_id, disk_meta)
+        return disk

@@ -1,0 +1,15 @@
+{
+  "name":"minimal",
+  "disk_size": 1024,
+  "file_size": 512,
+  "stripe_count": 6,
+  "parity_count": 2,
+  "r": 128,
+  "mutable": true,
+  "remote": true,
+  "local": "12.21..",
+  "peers": [
+      "127.0.01",
+      "12..23.."
+  ]
+}

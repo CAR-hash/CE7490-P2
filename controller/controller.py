@@ -137,6 +137,7 @@ class SimpleController(BaseController):
         if not os.path.exists(self.config.name):
             os.mkdir(self.config.name)
 
+        self.factory.allocate()
         disk_meta = {
             "raid_path": self.config.name,
             "file_size": self.config.file_size,
@@ -167,6 +168,7 @@ class SimpleController(BaseController):
         self.init_parity()
 
     def activate_raid(self):
+        self.factory.activate()
         disk_meta = {
             "raid_path": self.config.name,
             "file_size": self.config.file_size,
@@ -293,6 +295,8 @@ class SimpleController(BaseController):
                 self.q_parameters[i][data_stripes[p]] = p
 
     def init_multiply_table(self):
+        if os.path.exists("%s\\mul_table_a.json" % self.config.name) and os.path.exists("%s\\mul_table_b.json" % self.config.name):
+            return
         for x in range(0, 255):
             for y in range(0, 255):
                 ret = b'\x00'
@@ -312,6 +316,11 @@ class SimpleController(BaseController):
             f.write(json.dumps(self.b_dict))
 
     def load_multiply_table(self):
+        if not (os.path.exists("%s\\mul_table_a.json" % self.config.name) and os.path.exists("%s\\mul_table_b.json" % self.config.name)):
+            self.init_multiply_table()
+            self.a_dict.clear()
+            self.b_dict.clear()
+
         with open("%s\\mul_table_a.json" % self.config.name) as f:
             temp_dict = json.loads(f.read())
             for key in temp_dict.keys():
@@ -518,6 +527,7 @@ class MutableController(SimpleController):
         super().__init__(config)
 
     def activate_raid(self):
+        self.factory.activate()
         disk_meta = {
             "raid_path": self.config.name,
             "file_size": self.config.file_size,
