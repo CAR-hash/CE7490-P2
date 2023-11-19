@@ -5,10 +5,7 @@ import json
 
 import requests
 
-if os.path.exists("drive"):
-    from drive.peer_gate import PeerGate
-else:
-    from peer_gate import PeerGate
+from peer_gate import PeerGate
 
 # local disk
 # A disk is consist fo a certain number of chunks

@@ -1,9 +1,8 @@
 import argparse
 import copy
-import json
 import os
-from controller.controller import SimpleController, MutableController
-from util.config_util import ConfigObject
+from controller import SimpleController, MutableController
+from config_util import ConfigObject
 
 parser = argparse.ArgumentParser(prog="Distributed Raid-6", description="Raid commands")
 

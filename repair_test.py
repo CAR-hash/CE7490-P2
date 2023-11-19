@@ -1,16 +1,16 @@
 import unittest
 import random
 
-from controller.controller import *
-from util.config_util import ConfigObject
+from config_util import ConfigObject
+from controller import *
 import numpy as np
 
-class TestRemoteDisk(unittest.TestCase):
+class TestSimpleController(unittest.TestCase):
     def test_Q_repair(self):
         config = None
-        with open("remote/meta.json", 'r') as f:
+        with open("minimal/meta.json", 'r') as f:
             config = ConfigObject(f.read())
-            controller = MutableController(config)
+            controller = SimpleController(config)
             controller.activate_raid()
             controller.reset()
 
@@ -36,7 +36,8 @@ class TestRemoteDisk(unittest.TestCase):
         controller.save()
 
     def test_repair(self):
-        with open("remote/meta.json", 'r') as f:
+        config = None
+        with open("minimal/meta.json", 'r') as f:
             config = ConfigObject(f.read())
             controller = SimpleController(config)
             controller.activate_raid()

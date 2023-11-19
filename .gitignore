@@ -9,3 +9,4 @@ huge/
 test/__pycache__/
 controller/__pycache__/
 mutable/
+__pycache__/

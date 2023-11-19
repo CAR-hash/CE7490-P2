@@ -2,10 +2,7 @@ import math
 import os
 import json
 
-from drive.disk import SimpleDisk, RemoteDiskFactory, SimpleDiskFactory
-
-from util.config_util import ConfigObject
-import numpy as np
+from disk import RemoteDiskFactory, SimpleDiskFactory
 
 
 class DataObject(object):

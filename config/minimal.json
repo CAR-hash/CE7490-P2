@@ -4,5 +4,7 @@
   "file_size": 512,
   "stripe_count": 6,
   "parity_count": 2,
-  "r": 128
+  "r": 128,
+  "mutable": false,
+  "remote": false
 }

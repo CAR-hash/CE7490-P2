@@ -1,5 +1,4 @@
 import unittest
-from controller.controller import *
 import requests
 import json
 

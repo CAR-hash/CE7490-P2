@@ -1,5 +1,5 @@
 import unittest
-from controller.controller import *
+from controller import *
 
 
 class TestOp(unittest.TestCase):
