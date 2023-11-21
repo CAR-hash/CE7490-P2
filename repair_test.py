@@ -8,7 +8,7 @@ import numpy as np
 class TestSimpleController(unittest.TestCase):
     def test_Q_repair(self):
         config = None
-        with open("minimal/meta.json", 'r') as f:
+        with open("huge/meta.json", 'r') as f:
             config = ConfigObject(f.read())
             controller = SimpleController(config)
             controller.activate_raid()
@@ -18,7 +18,7 @@ class TestSimpleController(unittest.TestCase):
                          'o','p','q','r','s','t','u','v','w','x','y','z',
                          '0','1','2','3','4','5','6','7','8','9']
         random_data = []
-        obj_count = 48
+        obj_count = 240
         break_time = 100
 
         for i in range(0, obj_count):
@@ -37,7 +37,7 @@ class TestSimpleController(unittest.TestCase):
 
     def test_repair(self):
         config = None
-        with open("minimal/meta.json", 'r') as f:
+        with open("huge/meta.json", 'r') as f:
             config = ConfigObject(f.read())
             controller = SimpleController(config)
             controller.activate_raid()
@@ -47,7 +47,7 @@ class TestSimpleController(unittest.TestCase):
                          'o','p','q','r','s','t','u','v','w','x','y','z',
                          '0','1','2','3','4','5','6','7','8','9']
         random_data = []
-        obj_count = 48
+        obj_count = 240
         break_time = 100
 
         for i in range(0, obj_count):
@@ -65,7 +65,7 @@ class TestSimpleController(unittest.TestCase):
             # corrupt disks
             for disk_idx in break_disk:
                 for file_idx in range(0, content_count):
-                    with open("minimal/%d/content_%d.txt" % (disk_idx, file_idx), 'w') as f:
+                    with open("huge/%d/content_%d.txt" % (disk_idx, file_idx), 'w') as f:
                         data = str(bytes(config.file_size), encoding='utf-8')
                         f.write(data)
             # repair
