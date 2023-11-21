@@ -28,7 +28,7 @@ if opts.init is not None:
             controller = SimpleController(config)
             controller.create_new_raid()
             controller.save()
-
+# activate an RAID-6 instance and opens a console
 if opts.activate is not None:
     assert opt_count == 0
     sys_name = opts.activate[0]
